@@ -12,7 +12,7 @@ from .app import App
 from .commands import execute
 from .environment import LatexEnvironment, LatexDocument
 
-_REGEX_ESCAPE_CHARACTERS = "\\$^.+*"
+_REGEX_ESCAPE_CHARACTERS = "\\$^.+"
 
 class MarkdownParser:
 
@@ -239,12 +239,15 @@ class MarkdownParser:
     def _escape_placeholders(cls, placeholders: Mapping[Any, str], escape_characters: Sequence[str]):
         for placeholder, value in placeholders.items():
             # Escape characters in titles
-            match_ = re.match(xpr.headerany, value)
-            if match_ is not None:
-                title = match_.groups()[0]
-                title_e = cls._escape(title, escape_characters=escape_characters)
-                placeholders[placeholder] = re.sub(title, title_e, value)
-                continue
+            try:
+                match_ = re.match(xpr.headerany, value)
+                if match_ is not None:
+                    title = match_.groups()[0]
+                    title_e = cls._escape(title, escape_characters=escape_characters)
+                    placeholders[placeholder] = value.replace(title, title_e)
+                    continue
+            except Exception:
+                breakpoint()
             # Escape characters in hrefs
             match_ = re.match(xpr.href, value)
             if match_ is not None:
@@ -329,17 +332,16 @@ class MarkdownParser:
     def parse(self):
         text = self.markdown
         for fun in (
-            self.escape,
-            self.sections,
-            self.inline_code,
-            self.environments,
-            self.href,
-            self.enumerate,
-            self.emph,
+            self.sections,        # headers → structure
+            self.block_code,      # remove blocks early
+            self.block_quotes,
+            self.enumerate,       # lists before inline ops
+            self.inline_code,     # protect code
+            self.emph,            # Markdown emphasis
             self.quotation_marks,
             self.comments,
-            self.block_code,
-            self.block_quotes,
+            self.href,            # last Markdown semantic
+            self.escape,          # LaTeX escaping LAST
             self.break_ligatures,
             self.preamble,
         ):

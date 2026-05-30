@@ -31,3 +31,6 @@ def mdtk():
     if app.type == "pdf":
         return md2pdf(app)
     return 1
+
+if __name__ == "__main__":
+    mdtk()
